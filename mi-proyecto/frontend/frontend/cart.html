@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Mi Carrito - Mini Tienda</title>
+  
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+  <link rel="stylesheet" href="/css/custom.css">
+  
+  <style>
+    .cart-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem;
+      border-bottom: 1px solid var(--pico-border-color);
+      margin-bottom: 0.5rem;
+    }
+    .cart-item-info {
+      flex: 1;
+    }
+    .cart-item-price {
+      font-weight: bold;
+      min-width: 80px;
+      text-align: right;
+    }
+    .empty-cart {
+      text-align: center;
+      padding: 4rem 1rem;
+      color: var(--pico-color-grey-600);
+    }
+    #cart-total {
+      font-size: 1.4rem;
+      margin: 1.5rem 0;
+      text-align: right;
+    }
+    .loading {
+      text-align: center;
+      padding: 4rem 0;
+    }
+  </style>
+</head>
+
+<body>
+
+  <header class="container-fluid">
+    <nav class="container">
+      <ul>
+        <li><strong>Mini Tienda</strong></li>
+      </ul>
+      <ul id="nav-user"></ul>
+    </nav>
+  </header>
+
+  <main class="container">
+    <h1>Mi Carrito</h1>
+
+    <div id="loading" class="loading">Cargando carrito...</div>
+
+    <div id="empty-cart" class="empty-cart" style="display: none;">
+      <h3>Tu carrito está vacío</h3>
+      <p>¡Explora el <a href="/">catálogo</a> y añade productos!</p>
+    </div>
+
+    <div id="cart-content" style="display: none;">
+      <div id="cart-items"></div>
+
+      <div id="cart-total">
+        Total: <span id="total-amount">0.00 €</span>
+      </div>
+
+      <div style="text-align: right; margin: 2rem 0;">
+        <button id="btn-checkout" class="contrast" style="font-size: 1.2rem; padding: 0.8rem 2rem;">
+          Finalizar compra →
+        </button>
+      </div>
+
+      <p style="text-align: center;">
+        <a href="/">← Seguir comprando</a>
+      </p>
+    </div>
+  </main>
+
+  <script src="/js/api.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      await checkAuthStatus();
+
+      // Si no está logueado → redirigir a login
+      const isLogged = await checkAuthStatus();
+      if (!isLogged) {
+        window.location.href = '/login';
+        return;
+      }
+
+      loadCart();
+    });
+
+    async function loadCart() {
+      const loading = document.getElementById('loading');
+      const empty = document.getElementById('empty-cart');
+      const content = document.getElementById('cart-content');
+      const itemsContainer = document.getElementById('cart-items');
+
+      itemsContainer.innerHTML = '';
+      loading.style.display = 'block';
+      empty.style.display = 'none';
+      content.style.display = 'none';
+
+      try {
+        const data = await apiFetch('/api/cart');
+
+        loading.style.display = 'none';
+
+        if (data.cart.length === 0) {
+          empty.style.display = 'block';
+          return;
+        }
+
+        content.style.display = 'block';
+
+
+    // Recargar el carrito completo después de eliminar
+    loadCart();
+
+    // Opcional: pequeño mensaje de éxito
+    const statusMsg = document.createElement('p');
+    statusMsg.textContent = result.message;
+    statusMsg.style.color = 'var(--pico-color-green-600)';
+    statusMsg.style.textAlign = 'center';
+    document.querySelector('main').prepend(statusMsg);
+    setTimeout(() => statusMsg.remove(), 3000);
+
+  } catch (err) {
+    alert('Error al eliminar: ' + (err.message || 'Error desconocido'));
+  }
+}
+async function removeFromCart(productId) {
+  if (!confirm('¿Quieres quitar este producto del carrito?')) {
+    return;
+  }
+
+  try {
+    const response = await fetch(`/api/cart/${productId}`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' }
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.error || 'No se pudo eliminar el producto');
+    }
+
+        // Reemplaza el bloque de creación del div por este:
+
+data.cart.forEach(item => {
+  const div = document.createElement('div');
+  div.className = 'cart-item';
+  div.innerHTML = `
+    <div class="cart-item-info">
+      <strong>${escapeHTML(item.name)}</strong><br>
+      <small>${escapeHTML(item.description.substring(0, 80))}${item.description.length > 80 ? '...' : ''}</small>
+    </div>
+    <div class="cart-item-price">${item.price} €</div>
+    <button class="secondary outline small" 
+            onclick="removeFromCart('${item.id}')"
+            style="margin-left: 1rem;">
+      Eliminar
+    </button>
+  `;
+  itemsContainer.appendChild(div);
+});
+
+        document.getElementById('total-amount').textContent = `${data.total} €`;
+
+        // Habilitar botón checkout
+        document.getElementById('btn-checkout').addEventListener('click', checkout);
+
+      } catch (err) {
+        loading.style.display = 'none';
+        alert('Error al cargar el carrito: ' + err.message);
+      }
+    }
+
+    async function checkout() {
+  if (!confirm('¿Confirmas la compra de todos los productos en el carrito?')) {
+    return;
+  }
+
+  try {
+    const result = await apiFetch('/api/purchases/checkout', {
+      method: 'POST'
+    });
+
+    alert(result.message + `\nProductos comprados: ${result.purchasedItems}\nTotal: ${result.totalAmount} €`);
+
+    // Recargar visualmente el carrito (mostrar vacío)
+    document.getElementById('cart-items').innerHTML = '';
+    document.getElementById('total-amount').textContent = '0.00 €';
+    document.getElementById('cart-content').style.display = 'none';
+    document.getElementById('empty-cart').style.display = 'block';
+
+    // Opcional: redirigir a mis compras
+    setTimeout(() => {
+      window.location.href = '/my-purchases';
+    }, 1500);
+
+  } catch (err) {
+    alert('Error al procesar la compra:\n' + (err.message || 'Error desconocido'));
+  }
+}
+
+    function escapeHTML(str) {
+      return str.replace(/[&<>"']/g, m => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+      })[m]);
+    }
+  </script>
+</body>
+</html>

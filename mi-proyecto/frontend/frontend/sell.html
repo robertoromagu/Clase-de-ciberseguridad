@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Vender producto - Mini Tienda</title>
+  
+  <!-- Pico.css CDN -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+  
+  <!-- Opcional: tus estilos personalizados -->
+  <link rel="stylesheet" href="/css/custom.css">
+  
+  <style>
+    .container { max-width: 600px; margin: 2rem auto; }
+    .error { color: var(--pico-color-red-500); }
+    .success { color: var(--pico-color-green-600); }
+  </style>
+</head>
+
+<body>
+
+  <!-- Barra de navegación (puedes extraerla a un partial si quieres) -->
+  <header class="container-fluid">
+    <nav class="container">
+      <ul>
+        <li><strong>Mini Tienda</strong></li>
+      </ul>
+      <ul id="nav-user">
+        <!-- Se llenará con JS -->
+      </ul>
+    </nav>
+  </header>
+
+  <main class="container">
+    <h1>Vender un producto</h1>
+
+    <article id="status" style="display: none;"></article>
+
+    <form id="sell-form">
+      <label for="name">
+        Nombre del producto <span style="color: var(--pico-color-red-600);">*</span>
+        <input type="text" id="name" name="name" required placeholder="Ej: Auriculares inalámbricos" maxlength="100">
+      </label>
+
+      <label for="description">
+        Descripción (opcional)
+        <textarea id="description" name="description" rows="4" placeholder="Detalles, estado, características..." maxlength="1000"></textarea>
+      </label>
+
+      <label for="price">
+        Precio (€) <span style="color: var(--pico-color-red-600);">*</span>
+        <input type="number" id="price" name="price" step="0.01" min="0.01" required placeholder="19.99">
+      </label>
+
+      <button type="submit" class="contrast">Publicar producto</button>
+    </form>
+
+    <p><a href="/">← Volver al catálogo</a></p>
+  </main>
+
+  <script src="/js/api.js"></script>
+  <script src="/js/main.js"></script>
+  <script>
+    // Código específico de sell.html
+    document.addEventListener('DOMContentLoaded', () => {
+      checkAuthStatus(); // función que debes tener en main.js o api.js
+
+      const form = document.getElementById('sell-form');
+      const statusDiv = document.getElementById('status');
+
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        statusDiv.style.display = 'none';
+
+        const data = {
+          name: document.getElementById('name').value.trim(),
+          description: document.getElementById('description').value.trim(),
+          price: parseFloat(document.getElementById('price').value)
+        };
+
+        if (!data.name || isNaN(data.price) || data.price <= 0) {
+          showMessage('Por favor completa todos los campos correctamente.', 'error');
+          return;
+        }
+
+        try {
+          const response = await fetch('/api/products', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+          });
+
+          const result = await response.json();
+
+          if (!response.ok) {
+            throw new Error(result.error || 'Error desconocido');
+          }
+
+          showMessage('¡Producto publicado con éxito!', 'success');
+          form.reset();
+          // Opcional: redirigir después de 2 segundos
+          setTimeout(() => window.location.href = '/my-products', 1800);
+
+        } catch (err) {
+          showMessage(err.message || 'No se pudo publicar el producto.', 'error');
+        }
+      });
+
+      function showMessage(text, type = 'info') {
+        statusDiv.textContent = text;
+        statusDiv.className = type; // success / error
+        statusDiv.style.display = 'block';
+      }
+    });
+  </script>
+</body>
+</html>

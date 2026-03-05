@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Mis Compras - Mini Tienda</title>
+  
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+  <link rel="stylesheet" href="/css/custom.css">
+  
+  <style>
+    .purchase-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      padding: 1.2rem;
+      border-bottom: 1px solid var(--pico-border-color);
+      margin-bottom: 0.5rem;
+    }
+    .purchase-info {
+      flex: 1;
+    }
+    .purchase-price {
+      font-weight: bold;
+      min-width: 90px;
+      text-align: right;
+      color: var(--pico-color-green-700);
+    }
+    .purchase-date {
+      font-size: 0.9rem;
+      color: var(--pico-color-grey-600);
+      margin-top: 0.3rem;
+    }
+    .purchase-seller {
+      font-size: 0.95rem;
+      color: var(--pico-color-grey-700);
+    }
+    .empty-state {
+      text-align: center;
+      padding: 5rem 1rem;
+      color: var(--pico-color-grey-600);
+    }
+    #total-spent {
+      font-size: 1.3rem;
+      text-align: right;
+      margin: 2rem 0;
+      padding-top: 1rem;
+      border-top: 1px solid var(--pico-border-color);
+    }
+    .loading {
+      text-align: center;
+      padding: 5rem 0;
+    }
+  </style>
+</head>
+
+<body>
+
+  <header class="container-fluid">
+    <nav class="container">
+      <ul>
+        <li><strong>Mini Tienda</strong></li>
+      </ul>
+      <ul id="nav-user"></ul>
+    </nav>
+  </header>
+
+  <main class="container">
+    <h1>Mis Compras</h1>
+
+    <div id="loading" class="loading">Cargando tus compras...</div>
+
+    <div id="empty-state" class="empty-state" style="display: none;">
+      <h3>Aún no has realizado ninguna compra</h3>
+      <p>¡Explora el <a href="/">catálogo</a> y encuentra algo que te guste!</p>
+    </div>
+
+    <div id="purchases-content" style="display: none;">
+      <div id="purchases-list"></div>
+
+      <div id="total-spent">
+        Total gastado: <strong><span id="total-amount">0.00 €</span></strong>
+      </div>
+
+      <p style="text-align: center; margin-top: 2rem;">
+        <a href="/">← Volver al catálogo</a>
+      </p>
+    </div>
+  </main>
+
+  <script src="/js/api.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      // Verificar autenticación
+      const isLogged = await checkAuthStatus();
+      if (!isLogged) {
+        window.location.href = '/login';
+        return;
+      }
+
+      loadPurchases();
+    });
+
+    async function loadPurchases() {
+      const loading = document.getElementById('loading');
+      const empty = document.getElementById('empty-state');
+      const content = document.getElementById('purchases-content');
+      const list = document.getElementById('purchases-list');
+
+      list.innerHTML = '';
+      loading.style.display = 'block';
+      empty.style.display = 'none';
+      content.style.display = 'none';
+
+      try {
+        // Suponemos que tienes esta ruta: GET /api/purchases/my
+        const data = await apiFetch('/api/purchases/my');
+
+        loading.style.display = 'none';
+
+        if (!data.purchases || data.purchases.length === 0) {
+          empty.style.display = 'block';
+          return;
+        }
+
+        content.style.display = 'block';
+
+        let total = 0;
+
+        data.purchases.forEach(purchase => {
+          total += parseFloat(purchase.price);
+
+          const div = document.createElement('div');
+          div.className = 'purchase-item';
+          div.innerHTML = `
+            <div class="purchase-info">
+              <strong>${escapeHTML(purchase.name)}</strong><br>
+              <span class="purchase-seller">Vendido por: ${escapeHTML(purchase.seller)}</span>
+              <div class="purchase-date">
+                Comprado el ${new Date(purchase.purchased_at).toLocaleString('es-ES', {
+                  dateStyle: 'medium',
+                  timeStyle: 'short'
+                })}
+              </div>
+            </div>
+            <div class="purchase-price">${purchase.price} €</div>
+          `;
+          list.appendChild(div);
+        });
+
+        document.getElementById('total-amount').textContent = 
+          total.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+
+      } catch (err) {
+        loading.style.display = 'none';
+        alert('Error al cargar el historial de compras:\n' + (err.message || 'Error desconocido'));
+        console.error(err);
+      }
+    }
+
+    function escapeHTML(str) {
+      return str.replace(/[&<>"']/g, m => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+      })[m]);
+    }
+  </script>
+</body>
+</html>
